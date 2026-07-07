@@ -1,3 +1,11 @@
+// Motion-gating tuning
+// Below this motion %, a calm scene is treated as "still" and the vision call
+// is skipped to save tokens/latency.
+export const MOTION_GATE_THRESHOLD = 5;
+// Force a full scan after this many consecutive skipped ticks, so stationary
+// hazards (fire/smoke, which don't move pixels) are still caught periodically.
+export const GATE_HEARTBEAT_TICKS = 5;
+
 // Color maps and constants
 export const TM = {
   CRITICAL: { c: '#ff1744', bg: 'rgba(255,23,68,0.12)', p: true },
