@@ -7,6 +7,7 @@ import { capFrame } from './capture.js';
 import { speakTo } from './speech.js';
 import { initVC } from './voiceCheck.js';
 import { triggerDisp } from './dispatch.js';
+import { getVisionProvider } from './providers/index.js';
 
 export async function doScan() {
   if (S.isAnalyzing || !S.stream) return;
@@ -43,14 +44,13 @@ export async function doScan() {
         .replace('__E__', eS);
     }
 
-    const r = await (await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': S.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: elev ? 1200 : 600, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b } }, { type: 'text', text: pr }] }] })
-    })).json();
+    const result = await getVisionProvider().analyzeFrame({
+      imageBase64: b,
+      prompt: pr,
+      maxTokens: elev ? 1200 : 600,
+    });
 
-    if (r.error) throw new Error(r.error.message);
-    procResult(JSON.parse((r.content || []).map(c => c.text || '').join('').replace(/```json|```/g, '').trim()));
+    procResult(result);
   } catch (e) {
     console.error(e);
   } finally {
