@@ -1,5 +1,27 @@
 import { S } from './state.js';
 
+// Per-pixel mean-RGB delta above which a pixel counts as "changed".
+export const MOTION_PIXEL_THRESHOLD = 12;
+
+/**
+ * Percentage of pixels that changed between two RGBA frame buffers.
+ * Pure and DOM-free so it can be unit-tested.
+ * @param {Uint8ClampedArray} curr current frame RGBA data
+ * @param {Uint8ClampedArray} prev previous frame RGBA data
+ * @param {number} width
+ * @param {number} height
+ * @param {number} [threshold] mean-RGB delta to count a pixel as changed
+ * @returns {number} 0-100 motion percentage (rounded)
+ */
+export function computeMotionPercent(curr, prev, width, height, threshold = MOTION_PIXEL_THRESHOLD) {
+  let diff = 0;
+  const total = width * height;
+  for (let i = 0; i < curr.length; i += 4) {
+    if ((Math.abs(curr[i] - prev[i]) + Math.abs(curr[i + 1] - prev[i + 1]) + Math.abs(curr[i + 2] - prev[i + 2])) / 3 > threshold) diff++;
+  }
+  return Math.round(diff / total * 100);
+}
+
 export function compMot() {
   const vid = document.getElementById('vid'), c = document.getElementById('cap');
   const w = 160, h = 120;
@@ -7,13 +29,8 @@ export function compMot() {
   c.getContext('2d', { willReadFrequently: true }).drawImage(vid, 0, 0, w, h);
   const d = c.getContext('2d').getImageData(0, 0, w, h).data;
   if (!S.prevFrameData) { S.prevFrameData = new Uint8ClampedArray(d); return 0; }
-  let diff = 0;
-  const t = w * h;
-  for (let i = 0; i < d.length; i += 4) {
-    if ((Math.abs(d[i] - S.prevFrameData[i]) + Math.abs(d[i + 1] - S.prevFrameData[i + 1]) + Math.abs(d[i + 2] - S.prevFrameData[i + 2])) / 3 > 12) diff++;
-  }
+  const p = computeMotionPercent(d, S.prevFrameData, w, h);
   S.prevFrameData = new Uint8ClampedArray(d);
-  const p = Math.round(diff / t * 100);
   S.motion = p;
   S.motionHistory.push(p);
   if (S.motionHistory.length > 15) S.motionHistory.shift();
