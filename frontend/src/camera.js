@@ -45,7 +45,7 @@ function rCtrl(on) {
   const ct = document.getElementById('ct');
   if (on) {
     ct.innerHTML = `<button class="mono btn bp" id="sB">⊙ SCAN</button><button class="mono btn bg" id="aBtn">▶ AUTO</button><select class="mono sel" id="iSel"><option value="2">2s</option><option value="4" selected>4s</option><option value="6">6s</option></select><button class="mono btn bd" id="stopBtn" style="margin-left:auto">⏻ STOP</button>`;
-    document.getElementById('sB').addEventListener('click', doScan);
+    document.getElementById('sB').addEventListener('click', () => doScan(true));
     document.getElementById('aBtn').addEventListener('click', togAuto);
     document.getElementById('iSel').addEventListener('change', () => { if (S.autoScan) setRate(); });
     document.getElementById('stopBtn').addEventListener('click', stopCam);

@@ -19,6 +19,7 @@ export const S = {
   prevFrameData: null,
   motion: 0,
   motionHistory: [],
+  skippedScans: 0,
   askState: 'idle',
   askCooldown: 0,
   listenUntil: 0,

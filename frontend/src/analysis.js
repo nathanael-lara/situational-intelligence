@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { TM, CC2, P_LIGHT, P_FULL } from './config.js';
+import { TM, CC2, P_LIGHT, P_FULL, MOTION_GATE_THRESHOLD, GATE_HEARTBEAT_TICKS } from './config.js';
 import { addEvt, rEsc, rEvt, sTab } from './ui.js';
 import { fmt } from './utils.js';
 import { compMot } from './motion.js';
@@ -8,10 +8,36 @@ import { speakTo } from './speech.js';
 import { initVC } from './voiceCheck.js';
 import { triggerDisp } from './dispatch.js';
 import { getVisionProvider } from './providers/index.js';
+import { shouldScan } from './gating.js';
 
-export async function doScan() {
+export async function doScan(force = false) {
   if (S.isAnalyzing || !S.stream) return;
   if (!S.apiKey) { document.getElementById('modal').style.display = 'flex'; return; }
+
+  // Refresh motion first (cheap, local) so the gate has fresh input.
+  compMot();
+  const m = S.motion;
+  const maxE = Object.values(S.escalations).reduce((a, e) => Math.max(a, e.level || 0), 0);
+  const elev = S.tier === 'elevated' || maxE >= 25;
+  const eS = Object.keys(S.escalations).length ? JSON.stringify(S.escalations) : 'None';
+
+  // Motion gate: on a calm, still scene, skip the vision call and just
+  // increment the skip counter. A heartbeat scan still fires periodically.
+  // A manual/forced scan (button click) always bypasses the gate.
+  if (!force && !shouldScan({
+    motion: m,
+    tier: S.tier,
+    escalationCount: Object.keys(S.escalations).length,
+    askState: S.askState,
+    isFirstScan: S.frameCount === 0,
+    skippedSinceLastScan: S.skippedScans,
+    threshold: MOTION_GATE_THRESHOLD,
+    heartbeatTicks: GATE_HEARTBEAT_TICKS,
+  })) {
+    S.skippedScans++;
+    return;
+  }
+  S.skippedScans = 0;
 
   S.isAnalyzing = true;
   S.frameCount++;
@@ -19,12 +45,6 @@ export async function doScan() {
   document.getElementById('sL').style.display = 'block';
   const sb = document.getElementById('sB');
   if (sb) { sb.textContent = '⟳'; sb.disabled = true; }
-
-  compMot();
-  const m = S.motion;
-  const maxE = Object.values(S.escalations).reduce((a, e) => Math.max(a, e.level || 0), 0);
-  const elev = S.tier === 'elevated' || maxE >= 25;
-  const eS = Object.keys(S.escalations).length ? JSON.stringify(S.escalations) : 'None';
 
   try {
     const b = capFrame();
