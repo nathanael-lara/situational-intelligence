@@ -4,6 +4,7 @@ import { showAsk, addEvt, rEsc } from './ui.js';
 import { speakTo, setAudioHandler } from './speech.js';
 import { capGestureFrame } from './capture.js';
 import { triggerDisp } from './dispatch.js';
+import { getVisionProvider } from './providers/index.js';
 
 // ===== AUDIO CHECK =====
 function chkAudio(t) {
@@ -155,13 +156,7 @@ async function runGest() {
     .replace('__B__', String(S.baseMotion))
     .replace('__D__', String(d));
   try {
-    const r = await (await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': S.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 250, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b } }, { type: 'text', text: pr }] }] })
-    })).json();
-    if (r.error) return;
-    const g = JSON.parse((r.content || []).map(c => c.text || '').join('').replace(/```json|```/g, '').trim());
+    const g = await getVisionProvider().analyzeFrame({ imageBase64: b, prompt: pr, maxTokens: 250 });
     if (g.gesture_detected) {
       addEvt(`Gesture: ${g.gesture_type} — "${g.description}" (${Math.round(g.confidence * 100)}%)`, 'warning');
       if (g.means_yes && g.confidence >= 0.5) resolveVC('yes', 'gesture', g.description);
