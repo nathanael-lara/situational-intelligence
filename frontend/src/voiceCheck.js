@@ -5,14 +5,14 @@ import { speakTo, setAudioHandler } from './speech.js';
 import { capGestureFrame } from './capture.js';
 import { triggerDisp } from './dispatch.js';
 import { getVisionProvider } from './providers/index.js';
+import { classifyResponse } from './responses.js';
 
 // ===== AUDIO CHECK =====
 function chkAudio(t) {
   // Handle confirmation phase
   if (S.askState === 'confirm_listening') {
-    const no = ['no', 'cancel', 'stop', "don't", 'never mind', 'nevermind', 'false alarm'];
-    const yes = ['yes', 'confirm', 'help', 'please', 'do it', 'send help'];
-    if (no.some(w => t.includes(w))) {
+    const ans = classifyResponse(t, 'confirm');
+    if (ans === 'no') {
       S.askState = 'denied';
       showAsk('✓ Cancelled by person. Standing down.', '#69f0ae');
       addEvt('Person cancelled dispatch during confirmation', 'info');
@@ -22,7 +22,7 @@ function chkAudio(t) {
       setTimeout(() => { S.askState = 'idle'; showAsk(); }, 5000);
       return;
     }
-    if (yes.some(w => t.includes(w))) {
+    if (ans === 'yes') {
       S.askState = 'dispatched';
       showAsk('✓ Confirmed. Dispatching.', '#ff1744');
       addEvt('Person confirmed need for help during confirmation', 'emergency');
@@ -34,10 +34,9 @@ function chkAudio(t) {
 
   // Normal voice check listening
   if (!isListen() || S.gestureResolved) return;
-  const yes = ['yes', 'yeah', 'help', 'please', 'need help', 'help me', 'ambulance', 'emergency', 'somebody', 'uh huh', 'mm hmm', 'mhm'];
-  const no = ['no', 'nope', "i'm fine", "i'm okay", "i'm good", 'im fine', 'im okay', 'go away', 'leave me alone', 'stop', 'fine', 'all good', "don't need"];
-  if (yes.some(w => t.includes(w))) resolveVC('yes', 'audio', t);
-  else if (no.some(w => t.includes(w))) resolveVC('no', 'audio', t);
+  const ans = classifyResponse(t, 'listen');
+  if (ans === 'yes') resolveVC('yes', 'audio', t);
+  else if (ans === 'no') resolveVC('no', 'audio', t);
 }
 
 // Register audio handler with speech module
